@@ -4,60 +4,56 @@ Last updated: 2026-10-02
 
 ## Current phase
 
-**Architecture v0.2 — P0 CLOSED / FROZEN FOR IMPLEMENTATION**
+**SaaS Architecture v0.3 Migration — P0 SECURITY GATE DEFINED / NOT YET CLOSED**
 
-Three market-validation rounds selected TrustAnswer OS as the first MVP: an evidence-first security-questionnaire response and pre-send validation system for small B2B SaaS teams.
+TrustAnswer has migrated in product direction from a paid workbook to a multi-tenant membership SaaS.
 
-## Frozen product thesis
+Core promise remains:
 
-TrustAnswer should answer one operational question exceptionally well:
+> Never treat a security questionnaire response as ready to send unless its required support and review are valid.
 
-> Is this questionnaire safe to send based on what we can actually support?
+## Commercial model under implementation
 
-The MVP is not an AI auto-answer product, compliance certification product, trust center, or generic template library.
+- FREE — bounded evaluation/activation tier
+- SOLO — $19/month target
+- PRO — $49/month target
+- annual billing may use approximately two months of discount
+- AI is not required at launch
+- confidential evidence files are not hosted in MVP; metadata/reference is stored instead
 
-## Frozen architecture
+## Architecture inheritance
 
-- Seven-sheet workbook contract
-- Explicit answer/evidence/review states
-- Point-in-time evaluation model
-- Context-bound approvals
-- Revision-bound evidence
-- Explicit scope matching
-- Canonical claim consistency requirement
-- Invalidated state requiring fresh review
-- Fail-closed submission boundary
-- Immutable submission snapshot concept
-- Workbook integrity required for READY
+Architecture v0.2 remains the parent validation contract. Its evidence-first, revision-bound, point-in-time, scope, contradiction, approval, immutable-snapshot and fail-closed rules are inherited unchanged.
 
-## Architecture constitution
+The former seven workbook sheets are now seven logical SaaS modules backed by the database and private validation engine.
 
-1. Unknown is not Yes.
-2. Current truth cannot rewrite historical truth.
-3. A claim is not evidence.
-4. Evidence existence does not imply evidence validity.
-5. Fixing a dependency does not restore approval.
-6. Approval belongs to an exact context and exact revisions.
-7. Any ambiguity at the publication boundary fails closed.
+## New v0.3 P0 boundaries
 
-## Acceptance status
+- multi-tenant database ownership
+- tenant membership/roles
+- RLS for exposed tenant-owned data
+- server-only privileged credentials
+- Paddle billing state
+- server-derived entitlements
+- usage/quota enforcement
+- evidence-reference model
+- API trust boundary
+- cross-tenant and subscription-bypass adversarial testing
 
-Deep adversarial architecture review: **P0 CLOSED**.
+## Current gate
 
-A private acceptance suite currently contains **36 adversarial cases** covering the major architecture attack surfaces. Exact recipes and internal resolver logic are intentionally excluded from this public repository.
+Do **not** build UI/UX yet.
 
-## Next implementation gate
+Next implementation target:
 
-Build **Workbook Engine v0.1** against the frozen contract.
+1. relational schema and migrations
+2. RLS policies and authorization helpers
+3. auth/membership lifecycle
+4. Paddle webhook ingestion + idempotency
+5. entitlement resolver
+6. evidence-reference domain
+7. server-side validation API boundary
+8. execute cross-tenant + entitlement adversarial suite
+9. rerun inherited private v0.2 acceptance suite
 
-Required before UI/UX:
-
-- fictional sample SaaS dataset
-- deterministic formula implementation
-- integrity checks
-- expected state transitions
-- point-in-time behavior
-- submission snapshot behavior
-- private acceptance suite: 36/36 expected outcomes
-
-No UI polish, AI matcher, large answer corpus, or paid-product packaging before this gate passes.
+Only after all P0 tests are green may v0.3 freeze and UI work begin.
