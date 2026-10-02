@@ -13,6 +13,12 @@ begin;
 -- A_REVIEW = 00000000-0000-0000-0000-000000000103
 -- B_OWNER  = 00000000-0000-0000-0000-000000000201
 
+insert into auth.users(id,aud,role,email,created_at,updated_at) values
+('00000000-0000-0000-0000-000000000101','authenticated','authenticated','a-owner@example.invalid',now(),now()),
+('00000000-0000-0000-0000-000000000102','authenticated','authenticated','a-member@example.invalid',now(),now()),
+('00000000-0000-0000-0000-000000000103','authenticated','authenticated','a-review@example.invalid',now(),now()),
+('00000000-0000-0000-0000-000000000201','authenticated','authenticated','b-owner@example.invalid',now(),now());
+
 insert into public.tenants(id,name) values
 ('00000000-0000-0000-0000-000000001000','NimbusDesk Test Tenant A'),
 ('00000000-0000-0000-0000-000000002000','OtherCo Test Tenant B');
