@@ -74,7 +74,7 @@ end $$;
 insert into public.customers(tenant_id,name)
 values ('00000000-0000-0000-0000-000000001000','Member-created A customer');
 
-do $
+do $rls$
 declare denied boolean := false;
 begin
   begin
@@ -84,12 +84,12 @@ begin
     when insufficient_privilege or check_violation then denied := true;
   end;
   if not denied then raise exception 'RLS-A03: forged tenant insert unexpectedly succeeded'; end if;
-end $;
+end $rls$;
 
 -- REVIEWER cannot mutate ordinary tenant data.
 select pg_temp.as_privileged();
 select pg_temp.as_user('00000000-0000-0000-0000-000000000103');
-do $
+do $rls$
 declare denied boolean := false;
 begin
   begin
@@ -99,10 +99,10 @@ begin
     when insufficient_privilege or check_violation then denied := true;
   end;
   if not denied then raise exception 'RLS-A04: reviewer ordinary write unexpectedly succeeded'; end if;
-end $;
+end $rls$;
 
 -- Client cannot mutate server-authoritative billing/submission relations.
-do $
+do $rls$
 declare denied boolean := false;
 begin
   begin
@@ -111,7 +111,7 @@ begin
   exception when insufficient_privilege then denied := true;
   end;
   if not denied then raise exception 'RLS-A05: client entitlement write unexpectedly succeeded'; end if;
-end $;
+end $rls$;
 
 -- Membership removal is effective on the next statement/request context.
 select pg_temp.as_privileged();
@@ -131,7 +131,7 @@ end $$;
 select pg_temp.as_privileged();
 
 -- Composite tenant-safe FK rejects a Tenant A questionnaire pointing to Tenant B customer.
-do $
+do $rls$
 declare denied boolean := false;
 begin
   begin
@@ -144,7 +144,7 @@ begin
   exception when foreign_key_violation then denied := true;
   end;
   if not denied then raise exception 'RLS-A07: composite FK allowed cross-tenant parent'; end if;
-end $;
+end $rls$;
 
 -- Structural checks: all public base tables in TrustAnswer's current surface have RLS enabled.
 do $$
