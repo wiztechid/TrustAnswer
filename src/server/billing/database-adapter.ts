@@ -1,7 +1,7 @@
 // Database adapter boundary for Paddle subscription events.
 // The database resolves tenant identity; application code never supplies tenant_id.
 
-import type { TrustedSubscriptionEvent } from "./paddle-webhook";
+import type { TrustedSubscriptionEvent } from "./paddle-webhook.js";
 
 export interface BillingRpcClient {
   commitResolvedBillingEventV2(args: {
