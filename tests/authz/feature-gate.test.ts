@@ -1,4 +1,4 @@
-import {requireFeature,quotaDisplay} from "../../src/server/authz/feature-gate";
+import {requireFeature,quotaDisplay} from "../../src/server/authz/feature-gate.js";
 
 async function run(){
   const activePro={status:"ACTIVE" as const,planCode:"PRO" as const,limits:{questions:2500}};
