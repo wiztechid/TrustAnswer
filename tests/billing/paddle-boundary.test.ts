@@ -3,7 +3,7 @@ import {
   processTrustedSubscriptionEvent,
   type BillingStore,
   type TrustedSubscriptionEvent,
-} from "../../src/server/billing/paddle-webhook";
+} from "../../src/server/billing/paddle-webhook.js";
 
 function ev(overrides: Partial<TrustedSubscriptionEvent> = {}): TrustedSubscriptionEvent {
   return {
