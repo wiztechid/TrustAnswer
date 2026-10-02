@@ -11,6 +11,7 @@ export type TrustedSubscriptionEvent = {
   customerId: string;
   status: "active" | "trialing" | "past_due" | "paused" | "canceled";
   priceIds: string[];
+  currentBillingPeriod: null | { startsAt: string; endsAt: string };
   scheduledChange: null | { action: string; effectiveAt: string };
 };
 
@@ -67,6 +68,12 @@ export async function verifyAndNormalizePaddleWebhook(args: {
     customerId: data.customerId,
     status: data.status,
     priceIds,
+    currentBillingPeriod: data.currentBillingPeriod
+      ? {
+          startsAt: String(data.currentBillingPeriod.startsAt),
+          endsAt: String(data.currentBillingPeriod.endsAt),
+        }
+      : null,
     scheduledChange: data.scheduledChange
       ? {
           action: String(data.scheduledChange.action),
