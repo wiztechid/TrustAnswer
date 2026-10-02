@@ -1,51 +1,58 @@
 # TrustAnswer — Current Status
 
-Last updated: 2026-10-02
+Last updated: 2026-10-03
 
 ## Current phase
 
-**SaaS Architecture v0.3 Migration — MULTI-TENANT FOUNDATION IMPLEMENTED / EXECUTION QC PENDING**
+**SaaS Architecture v0.3 — STATIC P0 FOUNDATION FROZEN / RUNTIME EXECUTION GATE PENDING**
 
-TrustAnswer is migrating from a paid-workbook concept to a multi-tenant membership SaaS.
+TrustAnswer is a multi-tenant membership SaaS built around evidence-first security questionnaire validation.
 
-## Completed on v0.3 branch
+## Static foundation frozen
 
-- public SaaS architecture contract
-- seven workbook concepts migrated to logical SaaS modules
-- explicit tenant ownership model
-- auth membership/role model
-- foundational PostgreSQL relational schema
-- composite tenant-safe foreign keys
-- RLS enabled on exposed tenant-owned tables
-- operation-specific tenant policies for ordinary data
-- append-oriented review boundary
-- server-only membership writes
-- server-only submission creation
-- server-only billing/entitlement/webhook writes
-- evidence metadata/reference model
-- Paddle entitlement architecture contract
-- public cross-tenant/subscription adversarial gate
-- RLS acceptance contract
+The public-safe v0.3 foundation now includes:
+
+- explicit immutable tenant ownership and composite tenant-safe foreign keys
+- RLS plus explicit SQL privilege boundaries
+- controlled membership lifecycle with immutable event history and tenant-scoped authority locking
+- append-only canonical, evidence, and question-answer revision ledgers
+- deprecated mutable answer fields blocked from becoming a second authority
+- evidence-reference MVP boundary
+- Paddle raw-body verification boundary
+- exact provider customer + subscription tenant binding
+- database-resolved tenant billing commits
+- atomic webhook/subscription/entitlement transition contract
+- out-of-order, duplicate, conflicting-duplicate, and reconciliation handling
+- database-authoritative billing periods
+- atomic period-bound quota consumption and idempotent usage ledger
+- server-side paid feature gate; check-only application quota authorization removed
+- executable RLS/security regression harnesses
 
 ## Inherited contract
 
-Architecture v0.2 remains mandatory. Its private 36-case validation suite must be rerun after SaaS migration.
+Architecture v0.2 remains mandatory. Its private 36-case validation suite must be rerun against the SaaS implementation before P0 closure.
 
 ## Current P0 status
 
-**NOT CLOSED.**
+**STATIC FOUNDATION: FROZEN.**
+**RUNTIME P0: NOT CLOSED.**
 
-The SQL is now executable architecture, but tenant isolation has not yet been demonstrated against a live/test Supabase/Postgres environment. Documentation or static SQL review alone is not sufficient to claim P0 closure.
+No additional foundational feature should be added before runtime execution unless a test exposes a concrete defect.
 
-## Next gate
+## Runtime closure gate
 
-1. execute migration in isolated test environment
-2. run RLS acceptance cases with at least two tenants and multiple roles
-3. audit functions/views/RPC for RLS bypass paths
-4. implement membership lifecycle server path
-5. implement Paddle webhook signature verification + idempotency
-6. implement subscription reconciliation and entitlement resolver
-7. attack subscription bypass/out-of-order events
-8. rerun inherited v0.2 private suite
+1. apply migrations 0001–0013 to an isolated disposable Supabase/Postgres environment
+2. compile/typecheck the server billing/authz code against the pinned Paddle SDK
+3. run two-tenant/multi-role RLS acceptance suite
+4. run membership lifecycle and concurrent-last-owner tests
+5. run signed Paddle webhook replay/out-of-order/rollback tests
+6. run two-session final-unit quota concurrency test
+7. run reconciliation and provider-identity mismatch tests
+8. rerun inherited private v0.2 36-case suite
+9. run final Contract ↔ Schema ↔ RLS ↔ RPC ↔ Tests parity audit
 
-UI/UX remains blocked until these P0 gates pass.
+Only after all runtime gates pass may status become:
+
+**P0 CLOSED — SaaS FOUNDATION MAY FREEZE FOR UI IMPLEMENTATION**
+
+UI/UX remains blocked until runtime P0 closure.
