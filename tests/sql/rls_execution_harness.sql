@@ -68,43 +68,44 @@ end $$;
 insert into public.customers(tenant_id,name)
 values ('00000000-0000-0000-0000-000000001000','Member-created A customer');
 
-do $$
+do $
+declare denied boolean := false;
 begin
   begin
     insert into public.customers(tenant_id,name)
     values ('00000000-0000-0000-0000-000000002000','forged B customer');
-    raise exception 'RLS-A03: forged tenant insert unexpectedly succeeded';
   exception
-    when insufficient_privilege then null;
-    when check_violation then null;
+    when insufficient_privilege or check_violation then denied := true;
   end;
-end $$;
+  if not denied then raise exception 'RLS-A03: forged tenant insert unexpectedly succeeded'; end if;
+end $;
 
 -- REVIEWER cannot mutate ordinary tenant data.
 select pg_temp.as_privileged();
 select pg_temp.as_user('00000000-0000-0000-0000-000000000103');
-do $$
+do $
+declare denied boolean := false;
 begin
   begin
     insert into public.customers(tenant_id,name)
     values ('00000000-0000-0000-0000-000000001000','reviewer write');
-    raise exception 'RLS-A04: reviewer ordinary write unexpectedly succeeded';
   exception
-    when insufficient_privilege then null;
-    when check_violation then null;
+    when insufficient_privilege or check_violation then denied := true;
   end;
-end $$;
+  if not denied then raise exception 'RLS-A04: reviewer ordinary write unexpectedly succeeded'; end if;
+end $;
 
 -- Client cannot mutate server-authoritative billing/submission relations.
-do $$
+do $
+declare denied boolean := false;
 begin
   begin
     insert into public.entitlements(tenant_id,plan_code,status)
     values ('00000000-0000-0000-0000-000000001000','PRO','ACTIVE');
-    raise exception 'RLS-A05: client entitlement write unexpectedly succeeded';
-  exception when insufficient_privilege then null;
+  exception when insufficient_privilege then denied := true;
   end;
-end $$;
+  if not denied then raise exception 'RLS-A05: client entitlement write unexpectedly succeeded'; end if;
+end $;
 
 -- Membership removal is effective on the next statement/request context.
 select pg_temp.as_privileged();
@@ -123,6 +124,22 @@ end $$;
 
 select pg_temp.as_privileged();
 
+-- Composite tenant-safe FK rejects a Tenant A questionnaire pointing to Tenant B customer.
+do $
+declare denied boolean := false;
+begin
+  begin
+    insert into public.questionnaires(tenant_id,customer_id,title)
+    values (
+      '00000000-0000-0000-0000-000000001000',
+      '00000000-0000-0000-0000-000000002101',
+      'cross-tenant parent attempt'
+    );
+  exception when foreign_key_violation then denied := true;
+  end;
+  if not denied then raise exception 'RLS-A07: composite FK allowed cross-tenant parent'; end if;
+end $;
+
 -- Structural checks: all public base tables in TrustAnswer's current surface have RLS enabled.
 do $$
 declare bad text;
@@ -137,7 +154,7 @@ begin
       'subscriptions','entitlements','webhook_events','plan_catalog','usage_events'
     )
     and not c.relrowsecurity;
-  if bad is not null then raise exception 'RLS-A07: RLS disabled on %',bad; end if;
+  if bad is not null then raise exception 'RLS-A08: RLS disabled on %',bad; end if;
 end $$;
 
 rollback;
