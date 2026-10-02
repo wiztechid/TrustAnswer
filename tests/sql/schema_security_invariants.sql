@@ -62,7 +62,7 @@ begin
 end $$;
 
 -- Revision anchors are append-only to authenticated clients.
-do $
+do $inv$
 declare bad text;
 begin
   select string_agg(table_name||':'||privilege_type,', ' order by table_name,privilege_type) into bad
@@ -71,10 +71,11 @@ begin
     and table_name in ('canonical_answer_revisions','evidence_revisions','question_answer_revisions')
     and privilege_type in ('UPDATE','DELETE','TRUNCATE');
   if bad is not null then raise exception 'DB-I05: mutable revision anchor: %',bad; end if;
-end $;
+end
+$inv$;
 
 -- Tenant ownership trigger must cover every mutable tenant-owned application table.
-do $
+do $inv$
 declare bad text;
 begin
   with required(name) as (values
@@ -94,6 +95,7 @@ begin
       and tg.tgname='ta_tenant_immutable' and not tg.tgisinternal
   );
   if bad is not null then raise exception 'DB-I06: tenant immutability trigger missing: %',bad; end if;
-end $;
+end
+$inv$;
 
 rollback;
