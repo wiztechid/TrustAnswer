@@ -15,12 +15,17 @@ export type TrustedSubscriptionEvent = {
 };
 
 export interface BillingStore {
-  hasEvent(eventId: string): Promise<boolean>;
-  recordVerifiedEvent(input: TrustedSubscriptionEvent & { payloadHash: string }): Promise<void>;
+  hasCompletedEvent(eventId: string): Promise<boolean>;
   resolveTenant(customerId: string, subscriptionId: string): Promise<string | null>;
   getLastAcceptedEvent(tenantId: string): Promise<{ occurredAt: string; eventId: string } | null>;
-  applySubscriptionEvent(tenantId: string, event: TrustedSubscriptionEvent): Promise<"APPLIED"|"STALE"|"RECONCILE">;
   markReconcileRequired(tenantId: string, reason: string): Promise<void>;
+  // MUST atomically persist the verified event and resulting subscription/entitlement
+  // transition. If the transaction fails, the event must remain retryable.
+  commitVerifiedEvent(args: {
+    tenantId: string;
+    event: TrustedSubscriptionEvent;
+    payloadHash: string;
+  }): Promise<"APPLIED"|"STALE"|"RECONCILE">;
 }
 
 const allowedStatuses = new Set(["active","trialing","past_due","paused","canceled"]);
@@ -78,11 +83,7 @@ export async function processTrustedSubscriptionEvent(args: {
 }): Promise<"IGNORED_DUPLICATE"|"APPLIED"|"STALE"|"RECONCILE"> {
   const { event, store } = args;
 
-  if (await store.hasEvent(event.eventId)) return "IGNORED_DUPLICATE";
-
-  // Persist verified event identity before side effects; DB implementation must make
-  // event insertion + state transition transactional/idempotent.
-  await store.recordVerifiedEvent({ ...event, payloadHash: args.payloadHash });
+  if (await store.hasCompletedEvent(event.eventId)) return "IGNORED_DUPLICATE";
 
   const tenantId = await store.resolveTenant(event.customerId, event.subscriptionId);
   if (!tenantId) return "RECONCILE";
@@ -102,7 +103,8 @@ export async function processTrustedSubscriptionEvent(args: {
     }
   }
 
-  return store.applySubscriptionEvent(tenantId, event);
+  // Event completion and state transition are one database transaction.
+  return store.commitVerifiedEvent({ tenantId, event, payloadHash: args.payloadHash });
 }
 
 export function deriveEntitlement(input: {
