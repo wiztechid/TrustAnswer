@@ -34,6 +34,15 @@ begin
     select 1 from public.webhook_events
     where provider='PADDLE' and event_id=p_event_id and processing_state='COMPLETED'
   ) then
+    if exists (
+      select 1 from public.webhook_events
+      where provider='PADDLE' and event_id=p_event_id
+        and (payload_hash <> p_payload_hash
+          or coalesce(tenant_id,'00000000-0000-0000-0000-000000000000'::uuid) <> p_tenant_id
+          or coalesce(provider_object_id,'') <> p_subscription_id)
+    ) then
+      raise exception 'BILLING_EVENT_IDENTITY_CONFLICT';
+    end if;
     return 'IGNORED_DUPLICATE';
   end if;
 
