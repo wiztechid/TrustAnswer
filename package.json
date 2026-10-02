@@ -1,0 +1,18 @@
+{
+  "name": "trustanswer",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=20"},
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test:boundary": "tsx tests/billing/paddle-boundary.test.ts && tsx tests/authz/feature-gate.test.ts",
+    "test": "npm run typecheck && npm run test:boundary"
+  },
+  "dependencies": {
+    "@paddle/paddle-node-sdk": "3.10.0"
+  },
+  "devDependencies": {
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}
