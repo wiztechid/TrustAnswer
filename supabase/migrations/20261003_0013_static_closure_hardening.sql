@@ -41,8 +41,13 @@ returns trigger language plpgsql
 set search_path=''
 as $$
 begin
-  perform pg_advisory_xact_lock(hashtextextended(coalesce(new.tenant_id,old.tenant_id)::text || ':membership',0));
-  return coalesce(new,old);
+  if TG_OP='DELETE' then
+    perform pg_advisory_xact_lock(hashtextextended(old.tenant_id::text || ':membership',0));
+    return old;
+  else
+    perform pg_advisory_xact_lock(hashtextextended(new.tenant_id::text || ':membership',0));
+    return new;
+  end if;
 end;
 $$;
 drop trigger if exists ta_membership_tenant_lock on public.tenant_memberships;
