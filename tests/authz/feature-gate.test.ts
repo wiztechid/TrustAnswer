@@ -1,4 +1,4 @@
-import {requireFeature,requireQuota} from "../../src/server/authz/feature-gate";
+import {requireFeature,quotaDisplay} from "../../src/server/authz/feature-gate";
 
 async function run(){
   const activePro={status:"ACTIVE" as const,planCode:"PRO" as const,limits:{questions:2500}};
@@ -14,9 +14,9 @@ async function run(){
   try{await requireFeature({tenantId:"t",feature:"AI_SUGGESTIONS",reader:{getCurrentEntitlement:async()=>activePro}});}catch{aiDenied=true;}
   if(!aiDenied) throw new Error("FG02");
 
-  requireQuota({entitlement:activePro,metric:"questions",currentUsage:2499,increment:1});
-  let quotaDenied=false;
-  try{requireQuota({entitlement:activePro,metric:"questions",currentUsage:2500,increment:1});}catch{quotaDenied=true;}
-  if(!quotaDenied) throw new Error("FG03");
+  const display=quotaDisplay({entitlement:activePro,metric:"questions",currentUsage:2499});
+  if(display.limit!==2500 || display.remaining!==1) throw new Error("FG03");
+  const unknownDisplay=quotaDisplay({entitlement:activePro,metric:"missing",currentUsage:0});
+  if(unknownDisplay.limit!==null || unknownDisplay.remaining!==null) throw new Error("FG04");
 }
 run();
