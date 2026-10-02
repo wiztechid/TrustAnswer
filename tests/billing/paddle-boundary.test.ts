@@ -14,6 +14,7 @@ function ev(overrides: Partial<TrustedSubscriptionEvent> = {}): TrustedSubscript
     customerId: "ctm_test",
     status: "active",
     priceIds: ["pri_pro"],
+    currentBillingPeriod: {startsAt:"2026-10-01T00:00:00Z",endsAt:"2026-11-01T00:00:00Z"},
     scheduledChange: null,
     ...overrides,
   };
@@ -25,11 +26,10 @@ class FakeStore implements BillingStore {
   tenant: string | null = "tenant-a";
   reconcile = false;
   applied = 0;
-  async hasEvent(id:string){ return this.seen.has(id); }
-  async recordVerifiedEvent(e:any){ this.seen.add(e.eventId); }
+  async hasCompletedEvent(id:string){ return this.seen.has(id); }
   async resolveTenant(){ return this.tenant; }
   async getLastAcceptedEvent(){ return this.previous; }
-  async applySubscriptionEvent(){ this.applied++; return "APPLIED" as const; }
+  async commitVerifiedEvent(){ this.applied++; return "APPLIED" as const; }
   async markReconcileRequired(){ this.reconcile=true; }
 }
 
