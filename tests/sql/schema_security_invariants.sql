@@ -13,7 +13,8 @@ begin
     and table_schema='public'
     and table_name in (
       'tenants','tenant_memberships','subscriptions','entitlements',
-      'webhook_events','submissions','submission_items','plan_catalog','usage_events'
+      'webhook_events','submissions','submission_items','plan_catalog','usage_events',
+      'billing_identity_bindings'
     )
     and privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER');
   if bad is not null then
@@ -53,10 +54,46 @@ begin
   where schemaname='public'
     and tablename in (
       'tenants','tenant_memberships','subscriptions','entitlements',
-      'webhook_events','submissions','submission_items','plan_catalog','usage_events'
+      'webhook_events','submissions','submission_items','plan_catalog','usage_events',
+      'billing_identity_bindings'
     )
     and cmd in ('INSERT','UPDATE','DELETE','ALL');
   if bad is not null then raise exception 'DB-I04: client-facing mutation policy exists: %',bad; end if;
 end $$;
+
+-- Revision anchors are append-only to authenticated clients.
+do $
+declare bad text;
+begin
+  select string_agg(table_name||':'||privilege_type,', ' order by table_name,privilege_type) into bad
+  from information_schema.role_table_grants
+  where grantee='authenticated' and table_schema='public'
+    and table_name in ('canonical_answer_revisions','evidence_revisions','question_answer_revisions')
+    and privilege_type in ('UPDATE','DELETE','TRUNCATE');
+  if bad is not null then raise exception 'DB-I05: mutable revision anchor: %',bad; end if;
+end $;
+
+-- Tenant ownership trigger must cover every mutable tenant-owned application table.
+do $
+declare bad text;
+begin
+  with required(name) as (values
+    ('tenant_memberships'),('customers'),('questionnaires'),('questionnaire_questions'),
+    ('canonical_answers'),('canonical_answer_revisions'),('evidence_records'),('evidence_revisions'),
+    ('answer_evidence_bindings'),('gaps'),('reviews'),('submissions'),('submission_items'),
+    ('subscriptions'),('entitlements'),('usage_events'),('billing_identity_bindings'),
+    ('question_answer_revisions')
+  )
+  select string_agg(r.name,', ' order by r.name) into bad
+  from required r
+  where not exists (
+    select 1 from pg_trigger tg
+    join pg_class c on c.oid=tg.tgrelid
+    join pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='public' and c.relname=r.name
+      and tg.tgname='ta_tenant_immutable' and not tg.tgisinternal
+  );
+  if bad is not null then raise exception 'DB-I06: tenant immutability trigger missing: %',bad; end if;
+end $;
 
 rollback;
