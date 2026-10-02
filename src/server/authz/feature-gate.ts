@@ -35,15 +35,16 @@ export async function requireFeature(args:{
   return row;
 }
 
-export function requireQuota(args:{
+// Quota enforcement is intentionally absent here.
+// Server mutations must call the atomic database quota RPC. UI may display limits,
+// but check-only application logic is never authorization authority.
+export function quotaDisplay(args:{
   entitlement:EntitlementRow;
   metric:string;
   currentUsage:number;
-  increment:number;
-}):void{
-  if(!Number.isInteger(args.currentUsage) || !Number.isInteger(args.increment) || args.increment<=0)
-    throw new Error("INVALID_USAGE");
+}):{limit:number|null;remaining:number|null}{
   const limit=args.entitlement.limits[args.metric];
-  if(!Number.isInteger(limit) || limit<0) throw new Error("QUOTA_UNKNOWN");
-  if(args.currentUsage+args.increment>limit) throw new Error("QUOTA_EXCEEDED");
+  if(!Number.isInteger(limit) || limit<0 || !Number.isInteger(args.currentUsage) || args.currentUsage<0)
+    return {limit:null,remaining:null};
+  return {limit,remaining:Math.max(0,limit-args.currentUsage)};
 }
