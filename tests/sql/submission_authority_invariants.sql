@@ -123,4 +123,30 @@ begin
 end $sub$;
 reset role;
 
+
+-- Historical snapshots remain immutable even to a privileged database path.
+reset role;
+do $sub$
+declare sid uuid;
+begin
+ select id into sid from public.submissions
+ where tenant_id='00000000-0000-0000-0000-000000006000' limit 1;
+ begin
+   update public.submissions set schema_version='tampered'
+   where tenant_id='00000000-0000-0000-0000-000000006000' and id=sid;
+   raise exception 'SUB-I09: historical submission update accepted';
+ exception when others then
+   if sqlerrm='SUB-I09: historical submission update accepted' then raise; end if;
+   if sqlerrm<>'HISTORICAL_SUBMISSION_IMMUTABLE' then raise; end if;
+ end;
+ begin
+   delete from public.submission_items
+   where tenant_id='00000000-0000-0000-0000-000000006000' and submission_id=sid;
+   raise exception 'SUB-I10: historical submission item delete accepted';
+ exception when others then
+   if sqlerrm='SUB-I10: historical submission item delete accepted' then raise; end if;
+   if sqlerrm<>'HISTORICAL_SUBMISSION_IMMUTABLE' then raise; end if;
+ end;
+end $sub$;
+
 rollback;
