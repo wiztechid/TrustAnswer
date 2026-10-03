@@ -41,9 +41,9 @@ async function run(){
  r=await handlePaddleWebhook({rawBody:"raw",paddleSignature:"sig",webhookSecret:"s",apiKey:"k",store:s5,verify:async()=>event});
  if(r.status!==500||r.body!=="retry") throw new Error("HTTP-I05");
 
- // HTTP-I06 reconcile is explicit 202 rather than successful state transition.
+ // HTTP-I06 reconcile is retryable: never false-acknowledge unresolved authority.
  const s6=new Store(); s6.resolveTenant=async()=>null;
  r=await handlePaddleWebhook({rawBody:"raw",paddleSignature:"sig",webhookSecret:"s",apiKey:"k",store:s6,verify:async()=>event});
- if(r.status!==202||r.body!=="reconcile") throw new Error("HTTP-I06");
+ if(r.status!==500||r.body!=="retry") throw new Error("HTTP-I06");
 }
 run();
