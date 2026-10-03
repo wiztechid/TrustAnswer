@@ -16,7 +16,7 @@ function ev(overrides: Partial<TrustedSubscriptionEvent> = {}): TrustedSubscript
     priceIds: ["pri_pro"],
     currentBillingPeriod: {startsAt:"2026-10-01T00:00:00Z",endsAt:"2026-11-01T00:00:00Z"},
     scheduledChange: null,
-    checkoutBindingToken: null,
+    checkoutBindingHandle: null,
     ...overrides,
   };
 }
@@ -53,10 +53,10 @@ async function run(){
   if(await processTrustedSubscriptionEvent({event:ev(),payloadHash:"h",store:s4})!=="RECONCILE" || s4.consumed!==0) throw new Error("B04");
 
   const s4b=new FakeStore(); s4b.tenant=null;
-  if(await processTrustedSubscriptionEvent({event:ev({eventType:"subscription.created",checkoutBindingToken:"opaque-token"}),payloadHash:"h",store:s4b})!=="APPLIED" || s4b.consumed!==1 || s4b.applied!==1) throw new Error("B04b");
+  if(await processTrustedSubscriptionEvent({event:ev({eventType:"subscription.created",checkoutBindingHandle:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}),payloadHash:"h",store:s4b})!=="APPLIED" || s4b.consumed!==1 || s4b.applied!==1) throw new Error("B04b");
 
   const s4c=new FakeStore(); s4c.tenant=null;
-  if(await processTrustedSubscriptionEvent({event:ev({eventType:"subscription.updated",checkoutBindingToken:"opaque-token"}),payloadHash:"h",store:s4c})!=="RECONCILE" || s4c.consumed!==0) throw new Error("B04c");
+  if(await processTrustedSubscriptionEvent({event:ev({eventType:"subscription.updated",checkoutBindingHandle:"opaque-token"}),payloadHash:"h",store:s4c})!=="RECONCILE" || s4c.consumed!==0) throw new Error("B04c");
 
   for(const status of ["past_due","paused","canceled"]){
     const d=deriveEntitlement({status,mappedPlan:"PRO",mappingActive:true,reconciliationRequired:false});
