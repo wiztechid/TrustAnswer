@@ -3,7 +3,9 @@ import type { BillingIdentityResolver } from "./rpc-backed-store.js";
 
 type FetchLike=(input:string,init?:RequestInit)=>Promise<{ok:boolean;status:number;text():Promise<string>}>;
 type BillingResult="APPLIED"|"STALE"|"RECONCILE"|"IGNORED_DUPLICATE";
+type InitialBillingResult="APPLIED"|"STALE"|"RECONCILE";
 const allowed=new Set<BillingResult>(["APPLIED","STALE","RECONCILE","IGNORED_DUPLICATE"]);
+const allowedInitial=new Set<InitialBillingResult>(["APPLIED","STALE","RECONCILE"]);
 
 export class PostgrestBillingClient implements BillingRpcClient,BillingIdentityResolver{
  constructor(
@@ -31,6 +33,10 @@ export class PostgrestBillingClient implements BillingRpcClient,BillingIdentityR
   if(typeof v!=="string"||!allowed.has(v as BillingResult))throw new Error("BILLING_RPC_RESULT_INVALID");
   return v as BillingResult;
  }
+ private initialResult(v:unknown):InitialBillingResult{
+  if(typeof v!=="string"||!allowedInitial.has(v as InitialBillingResult))throw new Error("INITIAL_BILLING_RPC_RESULT_INVALID");
+  return v as InitialBillingResult;
+ }
  async resolveBillingTenant(a:{provider:"PADDLE";customerId:string;subscriptionId:string}){
   const v=await this.rpc("ta_resolve_billing_tenant",{p_provider:a.provider,p_customer_id:a.customerId,p_subscription_id:a.subscriptionId});
   if(v===null)return null;
@@ -45,7 +51,7 @@ export class PostgrestBillingClient implements BillingRpcClient,BillingIdentityR
   }));
  }
  async bindAndCommitProviderSubscription(a:Parameters<BillingRpcClient["bindAndCommitProviderSubscription"]>[0]){
-  return this.result(await this.rpc("ta_bind_and_commit_provider_subscription",{
+  return this.initialResult(await this.rpc("ta_bind_and_commit_provider_subscription",{
    p_token_hash:a.handle,p_event_id:a.eventId,p_event_type:a.eventType,p_occurred_at:a.occurredAt,
    p_payload_hash:a.payloadHash,p_customer_id:a.customerId,p_subscription_id:a.subscriptionId,
    p_price_id:a.priceId,p_provider_status:a.providerStatus,p_period_start:a.periodStart,p_period_end:a.periodEnd,
