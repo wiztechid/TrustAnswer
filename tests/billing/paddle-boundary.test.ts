@@ -28,9 +28,10 @@ class FakeStore implements BillingStore {
   reconcile = false;
   applied = 0;
   consumed = 0;
+  initialCommitted = 0;
   async hasCompletedEvent(id:string){ return this.seen.has(id); }
   async resolveTenant(){ return this.tenant; }
-  async consumeCheckoutBinding(){ this.consumed++; this.tenant="tenant-bound"; return "tenant-bound"; }
+  async bindAndCommitInitialSubscription(){ this.consumed++; this.initialCommitted++; return "APPLIED" as const; }
   async getLastAcceptedEvent(){ return this.previous; }
   async commitVerifiedEvent(){ this.applied++; return "APPLIED" as const; }
   async markReconcileRequired(){ this.reconcile=true; }
@@ -53,7 +54,7 @@ async function run(){
   if(await processTrustedSubscriptionEvent({event:ev(),payloadHash:"h",store:s4})!=="RECONCILE" || s4.consumed!==0) throw new Error("B04");
 
   const s4b=new FakeStore(); s4b.tenant=null;
-  if(await processTrustedSubscriptionEvent({event:ev({eventType:"subscription.created",checkoutBindingHandle:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}),payloadHash:"h",store:s4b})!=="APPLIED" || s4b.consumed!==1 || s4b.applied!==1) throw new Error("B04b");
+  if(await processTrustedSubscriptionEvent({event:ev({eventType:"subscription.created",checkoutBindingHandle:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}),payloadHash:"h",store:s4b})!=="APPLIED" || s4b.consumed!==1 || s4b.initialCommitted!==1 || s4b.applied!==0) throw new Error("B04b");
 
   const s4c=new FakeStore(); s4c.tenant=null;
   if(await processTrustedSubscriptionEvent({event:ev({eventType:"subscription.updated",checkoutBindingHandle:"opaque-token"}),payloadHash:"h",store:s4c})!=="RECONCILE" || s4c.consumed!==0) throw new Error("B04c");
