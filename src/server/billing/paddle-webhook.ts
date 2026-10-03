@@ -13,11 +13,13 @@ export type TrustedSubscriptionEvent = {
   priceIds: string[];
   currentBillingPeriod: null | { startsAt: string; endsAt: string };
   scheduledChange: null | { action: string; effectiveAt: string };
+  checkoutBindingToken: string | null;
 };
 
 export interface BillingStore {
   hasCompletedEvent(eventId: string): Promise<boolean>;
   resolveTenant(customerId: string, subscriptionId: string): Promise<string | null>;
+  consumeCheckoutBinding(token: string, customerId: string, subscriptionId: string): Promise<string>;
   getLastAcceptedEvent(tenantId: string): Promise<{ occurredAt: string; eventId: string } | null>;
   markReconcileRequired(tenantId: string, reason: string): Promise<void>;
   // MUST atomically persist the verified event and resulting subscription/entitlement
@@ -80,6 +82,10 @@ export async function verifyAndNormalizePaddleWebhook(args: {
           effectiveAt: String(data.scheduledChange.effectiveAt),
         }
       : null,
+    checkoutBindingToken:
+      typeof data.customData?.trustanswer_binding_token === "string"
+        ? data.customData.trustanswer_binding_token
+        : null,
   };
 }
 
@@ -92,8 +98,15 @@ export async function processTrustedSubscriptionEvent(args: {
 
   if (await store.hasCompletedEvent(event.eventId)) return "IGNORED_DUPLICATE";
 
-  const tenantId = await store.resolveTenant(event.customerId, event.subscriptionId);
-  if (!tenantId) return "RECONCILE";
+  let tenantId = await store.resolveTenant(event.customerId, event.subscriptionId);
+  if (!tenantId) {
+    if (event.eventType !== "subscription.created" || !event.checkoutBindingToken) return "RECONCILE";
+    tenantId = await store.consumeCheckoutBinding(
+      event.checkoutBindingToken,
+      event.customerId,
+      event.subscriptionId,
+    );
+  }
 
   const previous = await store.getLastAcceptedEvent(tenantId);
   if (previous) {
