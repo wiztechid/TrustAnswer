@@ -39,5 +39,7 @@ jobs:
         run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/submission_authority_invariants.sql
       - name: Run tenant bootstrap adversarial checks
         run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/tenant_bootstrap_invariants.sql
+      - name: Run checkout binding adversarial checks
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/checkout_binding_invariants.sql
       - name: Run RLS execution harness
         run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/rls_execution_harness.sql
