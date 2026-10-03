@@ -13,7 +13,7 @@ export type TrustedSubscriptionEvent = {
   priceIds: string[];
   currentBillingPeriod: null | { startsAt: string; endsAt: string };
   scheduledChange: null | { action: string; effectiveAt: string };
-  checkoutBindingToken: string | null;
+  checkoutBindingHandle: string | null;
 };
 
 export interface BillingStore {
@@ -82,9 +82,10 @@ export async function verifyAndNormalizePaddleWebhook(args: {
           effectiveAt: String(data.scheduledChange.effectiveAt),
         }
       : null,
-    checkoutBindingToken:
-      typeof data.customData?.trustanswer_binding_token === "string"
-        ? data.customData.trustanswer_binding_token
+    checkoutBindingHandle:
+      typeof data.customData?.trustanswer_binding_handle === "string" &&
+      /^[a-f0-9]{64}$/i.test(data.customData.trustanswer_binding_handle)
+        ? data.customData.trustanswer_binding_handle.toLowerCase()
         : null,
   };
 }
@@ -100,9 +101,9 @@ export async function processTrustedSubscriptionEvent(args: {
 
   let tenantId = await store.resolveTenant(event.customerId, event.subscriptionId);
   if (!tenantId) {
-    if (event.eventType !== "subscription.created" || !event.checkoutBindingToken) return "RECONCILE";
+    if (event.eventType !== "subscription.created" || !event.checkoutBindingHandle) return "RECONCILE";
     tenantId = await store.consumeCheckoutBinding(
-      event.checkoutBindingToken,
+      event.checkoutBindingHandle,
       event.customerId,
       event.subscriptionId,
     );
