@@ -18,7 +18,7 @@ export type TrustedSubscriptionEvent = {
 
 export interface BillingStore {
   resolveTenant(customerId: string, subscriptionId: string): Promise<string | null>;
-  bindAndCommitInitialSubscription(args: { handle:string; event:TrustedSubscriptionEvent; payloadHash:string }): Promise<"APPLIED"|"STALE"|"RECONCILE"|"IGNORED_DUPLICATE">;
+  bindAndCommitInitialSubscription(args: { handle:string; event:TrustedSubscriptionEvent; payloadHash:string }): Promise<"APPLIED"|"STALE"|"RECONCILE">;
   commitVerifiedEvent(args: {
     event: TrustedSubscriptionEvent;
     payloadHash: string;
