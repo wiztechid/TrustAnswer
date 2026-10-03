@@ -98,4 +98,21 @@ begin
 end
 $inv$;
 
+-- Membership lifecycle must acquire the tenant lock before role/count decisions.
+do $inv$
+declare body text;
+declare lock_pos integer;
+declare owner_count_pos integer;
+begin
+  select pg_get_functiondef(p.oid) into body
+  from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+  where n.nspname='public' and p.proname='ta_change_membership';
+  lock_pos:=position('ta_membership_lock(p_tenant_id)' in body);
+  owner_count_pos:=position('select count(*) into v_owner_count' in lower(body));
+  if lock_pos=0 or owner_count_pos=0 or lock_pos>=owner_count_pos then
+    raise exception 'DB-I07: membership lock must precede owner-count decision';
+  end if;
+end
+$inv$;
+
 rollback;
