@@ -58,6 +58,12 @@ async function run(){
   const s4c=new FakeStore(); s4c.tenant=null;
   if(await processTrustedSubscriptionEvent({event:ev({eventType:"subscription.updated",checkoutBindingHandle:"opaque-token"}),payloadHash:"h",store:s4c})!=="RECONCILE" || s4c.consumed!==0) throw new Error("B04c");
 
+  const s4d=new FakeStore(); s4d.tenant=null; s4d.seen.add("evt_new");
+  if(await processTrustedSubscriptionEvent({event:ev({eventType:"subscription.created",checkoutBindingHandle:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}),payloadHash:"h",store:s4d})!=="IGNORED_DUPLICATE" || s4d.consumed!==0) throw new Error("B04d");
+
+  const s4e=new FakeStore(); s4e.tenant="tenant-bound";
+  if(await processTrustedSubscriptionEvent({event:ev({eventId:"evt_redelivery",eventType:"subscription.created",checkoutBindingHandle:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}),payloadHash:"h2",store:s4e})!=="APPLIED" || s4e.consumed!==0 || s4e.applied!==1) throw new Error("B04e");
+
   for(const status of ["past_due","paused","canceled"]){
     const d=deriveEntitlement({status,mappedPlan:"PRO",mappingActive:true,reconciliationRequired:false});
     if(d.state!=="BLOCKED" || d.plan!=="FREE") throw new Error("B05-"+status);
