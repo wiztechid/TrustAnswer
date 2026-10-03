@@ -14,7 +14,7 @@ begin
     and table_name in (
       'tenants','tenant_memberships','subscriptions','entitlements',
       'webhook_events','submissions','submission_items','plan_catalog','usage_events',
-      'billing_identity_bindings'
+      'billing_identity_bindings','question_answer_heads'
     )
     and privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER');
   if bad is not null then
@@ -55,7 +55,7 @@ begin
     and tablename in (
       'tenants','tenant_memberships','subscriptions','entitlements',
       'webhook_events','submissions','submission_items','plan_catalog','usage_events',
-      'billing_identity_bindings'
+      'billing_identity_bindings','question_answer_heads'
     )
     and cmd in ('INSERT','UPDATE','DELETE','ALL');
   if bad is not null then raise exception 'DB-I04: client-facing mutation policy exists: %',bad; end if;
@@ -69,7 +69,7 @@ begin
   from information_schema.role_table_grants
   where grantee='authenticated' and table_schema='public'
     and table_name in ('canonical_answer_revisions','evidence_revisions','question_answer_revisions')
-    and privilege_type in ('UPDATE','DELETE','TRUNCATE');
+    and privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE');
   if bad is not null then raise exception 'DB-I05: mutable revision anchor: %',bad; end if;
 end
 $inv$;
@@ -83,7 +83,7 @@ begin
     ('canonical_answers'),('canonical_answer_revisions'),('evidence_records'),('evidence_revisions'),
     ('answer_evidence_bindings'),('gaps'),('reviews'),('submissions'),('submission_items'),
     ('subscriptions'),('entitlements'),('usage_events'),('billing_identity_bindings'),
-    ('question_answer_revisions')
+    ('question_answer_revisions'),('question_answer_heads')
   )
   select string_agg(r.name,', ' order by r.name) into bad
   from required r
@@ -116,3 +116,20 @@ end
 $inv$;
 
 rollback;
+
+
+-- Answer authority RPC exposure must remain narrow: append is authenticated; submission is service-only.
+do $inv$
+begin
+  if has_function_privilege('anon','public.ta_append_question_answer_revision(uuid,uuid,text,text,uuid)','EXECUTE')
+     or has_function_privilege('public','public.ta_append_question_answer_revision(uuid,uuid,text,text,uuid)','EXECUTE')
+     or not has_function_privilege('authenticated','public.ta_append_question_answer_revision(uuid,uuid,text,text,uuid)','EXECUTE')
+  then raise exception 'DB-I08: answer append RPC privilege drift'; end if;
+
+  if has_function_privilege('anon','public.ta_create_submission(uuid,uuid,timestamptz,text,text)','EXECUTE')
+     or has_function_privilege('authenticated','public.ta_create_submission(uuid,uuid,timestamptz,text,text)','EXECUTE')
+     or has_function_privilege('public','public.ta_create_submission(uuid,uuid,timestamptz,text,text)','EXECUTE')
+     or not has_function_privilege('service_role','public.ta_create_submission(uuid,uuid,timestamptz,text,text)','EXECUTE')
+  then raise exception 'DB-I09: submission RPC privilege drift'; end if;
+end
+$inv$;
