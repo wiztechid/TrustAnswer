@@ -11,7 +11,7 @@ const event:TrustedSubscriptionEvent={
 class Store implements BillingStore{
  calls=0; hash="";
  async hasCompletedEvent(){this.calls++;return false;}
- async resolveTenant(){this.calls++;return "tenant";}
+ async resolveTenant():Promise<string|null>{this.calls++;return "tenant";}
  async bindAndCommitInitialSubscription(){this.calls++;return "APPLIED" as const;}
  async getLastAcceptedEvent(){this.calls++;return null;}
  async markReconcileRequired(){this.calls++;}
