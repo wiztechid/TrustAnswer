@@ -10,7 +10,7 @@ insert into public.tenants(id,name) values
 ('00000000-0000-0000-0000-000000009000','Billing Test Tenant');
 
 insert into public.billing_identity_bindings(
- tenant_id,provider,provider_customer_id,provider_subscription_id,state
+ tenant_id,provider,provider_customer_id,provider_subscription_id,binding_state
 ) values (
  '00000000-0000-0000-0000-000000009000','PADDLE','ctm_db_auth','sub_db_auth','ACTIVE'
 );
