@@ -11,9 +11,9 @@ function ev(o:Partial<TrustedSubscriptionEvent>={}):TrustedSubscriptionEvent{ret
 
 class Store implements BillingStore{
  tenant:string|null="tenant"; committed=0; initial=0;
- result:"APPLIED"|"STALE"|"RECONCILE"|"IGNORED_DUPLICATE"="APPLIED";
+ result:"APPLIED"|"STALE"|"RECONCILE"|"IGNORED_DUPLICATE"="APPLIED"; initialResult:"APPLIED"|"STALE"|"RECONCILE"="APPLIED";
  async resolveTenant(){return this.tenant;}
- async bindAndCommitInitialSubscription(){this.initial++;return this.result;}
+ async bindAndCommitInitialSubscription(){this.initial++;return this.initialResult;}
  async commitVerifiedEvent(){this.committed++;return this.result;}
 }
 async function run(){
