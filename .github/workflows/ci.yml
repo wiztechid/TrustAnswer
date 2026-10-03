@@ -31,5 +31,7 @@ jobs:
         run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/billing_identity_invariants.sql
       - name: Run DB-derived entitlement adversarial checks
         run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/db_derived_entitlement_invariants.sql
+      - name: Run quota authority adversarial checks
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/quota_authority_invariants.sql
       - name: Run RLS execution harness
         run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/rls_execution_harness.sql
