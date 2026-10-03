@@ -2,57 +2,83 @@
 
 Last updated: 2026-10-03
 
-## Current phase
+## Product direction
+TrustAnswer is a multi-tenant SaaS validator for security questionnaires. Core promise: **Never send a security answer you cannot prove.** AI is not authoritative and is not required for MVP.
 
-**SaaS Architecture v0.3 — STATIC P0 FOUNDATION FROZEN / RUNTIME EXECUTION GATE PENDING**
+## Architecture status
+**SaaS Architecture v0.3 — P0 authority foundations substantially closed; HTTP/product integration still pending.**
 
-TrustAnswer is a multi-tenant membership SaaS built around evidence-first security questionnaire validation.
+The original v0.2 validation constitution remains inherited: absence of a failure signal is never evidence of success.
 
-## Static foundation frozen
+## Runtime-proven P0 closures
 
-The public-safe v0.3 foundation now includes:
+### 1. Multi-tenant / RLS foundation — CLOSED
+Disposable Supabase CI applies migrations from zero and executes schema/RLS runtime invariants. Tenant-owned rows use explicit tenant identity, RLS, role checks, immutable tenant ownership, and server-only privileged tables.
 
-- explicit immutable tenant ownership and composite tenant-safe foreign keys
-- RLS plus explicit SQL privilege boundaries
-- controlled membership lifecycle with immutable event history and tenant-scoped authority locking
-- append-only canonical, evidence, and question-answer revision ledgers
-- deprecated mutable answer fields blocked from becoming a second authority
-- evidence-reference MVP boundary
-- Paddle raw-body verification boundary
-- exact provider customer + subscription tenant binding
-- database-resolved tenant billing commits
-- atomic webhook/subscription/entitlement transition contract
-- out-of-order, duplicate, conflicting-duplicate, and reconciliation handling
-- database-authoritative billing periods
-- atomic period-bound quota consumption and idempotent usage ledger
-- server-side paid feature gate; check-only application quota authorization removed
-- executable RLS/security regression harnesses
+### 2. DB-derived billing entitlement — CLOSED
+Provider facts are accepted; plan, limits, and entitlement are derived from database catalog authority. Unknown/inactive mappings fail closed. Caller-derived entitlement RPCs are not service reachable.
 
-## Inherited contract
+### 3. Quota authority — CLOSED for current semantics
+FREE uses authoritative lifetime quota (25 questions). Paid quota requires authoritative subscription period. Runtime suite proves lifetime enforcement, idempotency, 26th-question denial, and paid-period fail-closed behavior.
 
-Architecture v0.2 remains mandatory. Its private 36-case validation suite must be rerun against the SaaS implementation before P0 closure.
+### 4. Answer → Review → Submission authority chain — P0 CLOSED / FROZEN
+Runtime-proven:
+- append-only question answer revisions and authoritative HEAD;
+- historical reviews do not pin HEAD;
+- review creation requires current exact revision;
+- stale approval cannot authorize a newer revision;
+- submission requires ACTIVE SOLO/PRO entitlement;
+- server-only exact-bound submission creation;
+- exact answer revision + approved review snapshot;
+- direct service table insertion denied;
+- historical submissions/items reject UPDATE/DELETE at DB trigger level;
+- legacy text refs are compatibility snapshot only and non-authoritative.
 
-## Current P0 status
+### 5. Trusted tenant + FREE provisioning bootstrap — P0 CLOSED / FROZEN
+Atomic trusted bootstrap creates tenant + initial OWNER + authoritative FREE entitlement. Invalid user/input and FREE-authority failure roll back without orphan state. Browser cannot invoke bootstrap or FREE provisioning primitive directly.
 
-**STATIC FOUNDATION: FROZEN.**
-**RUNTIME P0: NOT CLOSED.**
+### 6. Trusted Paddle identity authority foundation — P0 CLOSED / FROZEN
+Runtime-proven:
+- opaque non-secret 64-hex checkout binding handle;
+- OWNER/ADMIN issuance requirement;
+- expiry and one-time semantics;
+- exact provider customer + subscription identity binding;
+- duplicate identity rollback;
+- browser cannot issue/consume;
+- verified webhook boundary only permits bootstrap on subscription.created;
+- replay/redelivery does not re-consume binding;
+- first subscription binding + DB-derived entitlement + billing-event commit are atomic;
+- failed initial billing event leaves zero binding and unconsumed handle;
+- split consume primitive is retired from service_role;
+- legacy caller-derived entitlement RPC remains inaccessible;
+- DB-I10 locks the allowed billing RPC surface.
 
-No additional foundational feature should be added before runtime execution unless a test exposes a concrete defect.
+## Important boundary
+The **billing identity authority foundation is closed**, but a production HTTP webhook handler/composition has not yet been demonstrated in this repository. Do not claim end-to-end Paddle integration is complete until a real handler composes:
+raw request body → Paddle signature verification → trusted normalizer → exact identity lookup / atomic initial binding → billing commit → deterministic HTTP response.
 
-## Runtime closure gate
+## Current migrations
+Migrations are sequential through:
+`20261003002000_atomic_initial_billing_binding.sql`
 
-1. apply migrations 0001–0013 to an isolated disposable Supabase/Postgres environment
-2. compile/typecheck the server billing/authz code against the pinned Paddle SDK
-3. run two-tenant/multi-role RLS acceptance suite
-4. run membership lifecycle and concurrent-last-owner tests
-5. run signed Paddle webhook replay/out-of-order/rollback tests
-6. run two-session final-unit quota concurrency test
-7. run reconciliation and provider-identity mismatch tests
-8. rerun inherited private v0.2 36-case suite
-9. run final Contract ↔ Schema ↔ RLS ↔ RPC ↔ Tests parity audit
+## CI status
+Latest verified run at this checkpoint: **Boundary CI #155 — SUCCESS**.
+It includes migrations from zero plus schema security, billing identity, DB-derived entitlement, quota authority, answer revision, submission authority, tenant bootstrap, checkout binding, atomic initial billing, RLS execution, and TypeScript/boundary tests.
 
-Only after all runtime gates pass may status become:
+## Frozen areas
+Do not modify without a concrete defect:
+- Answer → Review → Entitlement → Submission chain
+- Trusted tenant + FREE bootstrap
+- Trusted Paddle identity authority foundation
 
-**P0 CLOSED — SaaS FOUNDATION MAY FREEZE FOR UI IMPLEMENTATION**
+## Next execution priorities
+1. Build the production webhook composition/handler around the already-frozen billing authority boundary.
+2. Add handler-level tests for raw-body preservation, invalid signature, deterministic success/retry responses, and no side effects before verification.
+3. Audit generic historical immutability coverage outside the frozen submission chain.
+4. Add true two-session concurrency tests for membership and quota locks.
+5. Add package lock and move CI from `npm install` to `npm ci`.
+6. Port the remaining v0.2 adversarial validator suite to the SaaS engine before product UI.
+7. Keep AI and confidential evidence-file hosting out of MVP until their gates are met.
 
-UI/UX remains blocked until runtime P0 closure.
+## Public/private boundary
+Public repository may contain public-safe architecture, migrations, contracts, and defensive tests. Private moat/adversarial recipes beyond what is necessary for regression safety must not be published.
