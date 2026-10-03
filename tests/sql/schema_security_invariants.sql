@@ -121,9 +121,6 @@ begin
 end
 $inv$;
 
-rollback;
-
-
 -- Answer authority RPC exposure must remain narrow: append is authenticated; submission is service-only.
 do $inv$
 begin
@@ -139,3 +136,27 @@ begin
   then raise exception 'DB-I09: submission RPC privilege drift'; end if;
 end
 $inv$;
+
+
+-- Billing authority must expose only DB-derived provider-fact paths to service_role.
+do $inv$
+begin
+  if not has_function_privilege('service_role',
+    'public.ta_commit_provider_billing_event(text,text,timestamptz,text,text,text,text,text,timestamptz,timestamptz)','EXECUTE')
+  then raise exception 'DB-I10: normal provider billing RPC unavailable'; end if;
+
+  if not has_function_privilege('service_role',
+    'public.ta_bind_and_commit_provider_subscription(text,text,text,timestamptz,text,text,text,text,text,timestamptz,timestamptz)','EXECUTE')
+  then raise exception 'DB-I10: atomic initial billing RPC unavailable'; end if;
+
+  if has_function_privilege('service_role',
+    'public.ta_consume_checkout_binding(text,text,text)','EXECUTE')
+  then raise exception 'DB-I10: split checkout consume primitive exposed'; end if;
+
+  if has_function_privilege('service_role',
+    'public.ta_commit_resolved_billing_event_v2(text,text,timestamptz,text,text,text,text,text,text,text,jsonb,timestamptz,timestamptz)','EXECUTE')
+  then raise exception 'DB-I10: caller-derived entitlement RPC exposed'; end if;
+end
+$inv$;
+
+rollback;
