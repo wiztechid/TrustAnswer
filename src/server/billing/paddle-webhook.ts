@@ -17,18 +17,12 @@ export type TrustedSubscriptionEvent = {
 };
 
 export interface BillingStore {
-  hasCompletedEvent(eventId: string): Promise<boolean>;
   resolveTenant(customerId: string, subscriptionId: string): Promise<string | null>;
-  bindAndCommitInitialSubscription(args: { handle:string; event:TrustedSubscriptionEvent; payloadHash:string }): Promise<"APPLIED"|"STALE"|"RECONCILE">;
-  getLastAcceptedEvent(tenantId: string): Promise<{ occurredAt: string; eventId: string } | null>;
-  markReconcileRequired(tenantId: string, reason: string): Promise<void>;
-  // MUST atomically persist the verified event and resulting subscription/entitlement
-  // transition. If the transaction fails, the event must remain retryable.
+  bindAndCommitInitialSubscription(args: { handle:string; event:TrustedSubscriptionEvent; payloadHash:string }): Promise<"APPLIED"|"STALE"|"RECONCILE"|"IGNORED_DUPLICATE">;
   commitVerifiedEvent(args: {
-    tenantId: string;
     event: TrustedSubscriptionEvent;
     payloadHash: string;
-  }): Promise<"APPLIED"|"STALE"|"RECONCILE">;
+  }): Promise<"APPLIED"|"STALE"|"RECONCILE"|"IGNORED_DUPLICATE">;
 }
 
 const allowedStatuses = new Set(["active","trialing","past_due","paused","canceled"]);
@@ -97,8 +91,8 @@ export async function processTrustedSubscriptionEvent(args: {
 }): Promise<"IGNORED_DUPLICATE"|"APPLIED"|"STALE"|"RECONCILE"> {
   const { event, store } = args;
 
-  if (await store.hasCompletedEvent(event.eventId)) return "IGNORED_DUPLICATE";
-
+  // Identity lookup is routing only. Replay/order/transition authority remains in
+  // the database transaction; TypeScript performs no authoritative preflight.
   const tenantId = await store.resolveTenant(event.customerId, event.subscriptionId);
   if (!tenantId) {
     if (event.eventType !== "subscription.created" || !event.checkoutBindingHandle) return "RECONCILE";
@@ -109,23 +103,7 @@ export async function processTrustedSubscriptionEvent(args: {
     });
   }
 
-  const previous = await store.getLastAcceptedEvent(tenantId);
-  if (previous) {
-    const incoming = Date.parse(event.occurredAt);
-    const accepted = Date.parse(previous.occurredAt);
-    if (!Number.isFinite(incoming) || !Number.isFinite(accepted)) {
-      await store.markReconcileRequired(tenantId, "INVALID_EVENT_TIME");
-      return "RECONCILE";
-    }
-    if (incoming < accepted) return "STALE";
-    if (incoming === accepted && event.eventId !== previous.eventId) {
-      await store.markReconcileRequired(tenantId, "AMBIGUOUS_SAME_TIME_EVENTS");
-      return "RECONCILE";
-    }
-  }
-
-  // Event completion and state transition are one database transaction.
-  return store.commitVerifiedEvent({ tenantId, event, payloadHash: args.payloadHash });
+  return store.commitVerifiedEvent({ event, payloadHash: args.payloadHash });
 }
 
 export function deriveEntitlement(input: {
