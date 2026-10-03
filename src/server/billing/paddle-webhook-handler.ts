@@ -36,7 +36,7 @@ export async function handlePaddleWebhook(args:{
  const payloadHash=createHash("sha256").update(args.rawBody,"utf8").digest("hex");
  try{
    const result=await processTrustedSubscriptionEvent({event,payloadHash,store:args.store});
-   if(result==="RECONCILE") return {status:202,body:"reconcile"};
+   if(result==="RECONCILE") return {status:500,body:"retry"};
    return {status:200,body:result.toLowerCase()};
  }catch{
    // Retryable server/storage failure: never acknowledge as successfully processed.
