@@ -35,5 +35,7 @@ jobs:
         run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/quota_authority_invariants.sql
       - name: Run answer revision adversarial checks
         run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/answer_revision_invariants.sql
+      - name: Run submission authority adversarial checks
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/submission_authority_invariants.sql
       - name: Run RLS execution harness
         run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/rls_execution_harness.sql
