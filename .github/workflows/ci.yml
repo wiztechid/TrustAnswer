@@ -1,0 +1,49 @@
+name: Boundary CI
+on:
+  pull_request:
+  push:
+    branches: [main, architecture/saas-v0.3]
+jobs:
+  typescript-boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --ignore-scripts
+      - run: npm test
+
+  database-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start disposable Supabase
+        run: supabase start -x studio,inbucket,storage-api,imgproxy,edge-runtime,logflare,vector
+      - name: Apply migrations from zero
+        run: supabase db reset
+      - name: Run schema security invariants
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/schema_security_invariants.sql
+      - name: Run billing identity invariants
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/billing_identity_invariants.sql
+      - name: Run DB-derived entitlement adversarial checks
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/db_derived_entitlement_invariants.sql
+      - name: Run quota authority adversarial checks
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/quota_authority_invariants.sql
+      - name: Run answer revision adversarial checks
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/answer_revision_invariants.sql
+      - name: Run submission authority adversarial checks
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/submission_authority_invariants.sql
+      - name: Run tenant bootstrap adversarial checks
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/tenant_bootstrap_invariants.sql
+      - name: Run checkout binding adversarial checks
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/checkout_binding_invariants.sql
+      - name: Run atomic initial billing adversarial checks
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/atomic_initial_billing_invariants.sql
+      - name: Run true two-session concurrency checks
+        run: bash tests/sql/concurrency_runtime.sh
+      - name: Run RLS execution harness
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f tests/sql/rls_execution_harness.sql
