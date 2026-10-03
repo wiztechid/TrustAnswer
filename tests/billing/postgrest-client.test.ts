@@ -16,5 +16,8 @@ async function run(){
  if(await idc.resolveBillingTenant({provider:"PADDLE",customerId:"c",subscriptionId:"s"})!=="tenant-uuid")throw new Error("PG-I06");
  const bad=new PostgrestBillingClient("https://db.example","secret",async()=>({ok:true,status:200,async text(){return '"FREE"';}}));
  let failed=false;try{await bad.commitProviderBillingEvent(base);}catch{failed=true;}if(!failed)throw new Error("PG-I07");
+ const dupInitial=new PostgrestBillingClient("https://db.example","secret",async()=>({ok:true,status:200,async text(){return '"IGNORED_DUPLICATE"';}}));
+ failed=false;try{await dupInitial.bindAndCommitProviderSubscription({...base,handle:"a".repeat(64),eventType:"subscription.created"});}catch{failed=true;}
+ if(!failed)throw new Error("PG-I08");
 }
 run();
