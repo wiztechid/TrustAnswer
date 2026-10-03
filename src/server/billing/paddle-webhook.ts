@@ -19,7 +19,7 @@ export type TrustedSubscriptionEvent = {
 export interface BillingStore {
   hasCompletedEvent(eventId: string): Promise<boolean>;
   resolveTenant(customerId: string, subscriptionId: string): Promise<string | null>;
-  consumeCheckoutBinding(token: string, customerId: string, subscriptionId: string): Promise<string>;
+  bindAndCommitInitialSubscription(args: { handle:string; event:TrustedSubscriptionEvent; payloadHash:string }): Promise<"APPLIED"|"STALE"|"RECONCILE">;
   getLastAcceptedEvent(tenantId: string): Promise<{ occurredAt: string; eventId: string } | null>;
   markReconcileRequired(tenantId: string, reason: string): Promise<void>;
   // MUST atomically persist the verified event and resulting subscription/entitlement
@@ -99,14 +99,14 @@ export async function processTrustedSubscriptionEvent(args: {
 
   if (await store.hasCompletedEvent(event.eventId)) return "IGNORED_DUPLICATE";
 
-  let tenantId = await store.resolveTenant(event.customerId, event.subscriptionId);
+  const tenantId = await store.resolveTenant(event.customerId, event.subscriptionId);
   if (!tenantId) {
     if (event.eventType !== "subscription.created" || !event.checkoutBindingHandle) return "RECONCILE";
-    tenantId = await store.consumeCheckoutBinding(
-      event.checkoutBindingHandle,
-      event.customerId,
-      event.subscriptionId,
-    );
+    return store.bindAndCommitInitialSubscription({
+      handle: event.checkoutBindingHandle,
+      event,
+      payloadHash: args.payloadHash,
+    });
   }
 
   const previous = await store.getLastAcceptedEvent(tenantId);
