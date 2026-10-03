@@ -61,16 +61,22 @@ begin
   if bad is not null then raise exception 'DB-I04: client-facing mutation policy exists: %',bad; end if;
 end $$;
 
--- Revision anchors are append-only to authenticated clients.
+-- Revision anchors are append-only. Canonical/evidence revisions may be appended by
+-- authorized clients; question-answer revisions are stricter and append only through its RPC.
 do $inv$
 declare bad text;
 begin
   select string_agg(table_name||':'||privilege_type,', ' order by table_name,privilege_type) into bad
   from information_schema.role_table_grants
   where grantee='authenticated' and table_schema='public'
-    and table_name in ('canonical_answer_revisions','evidence_revisions','question_answer_revisions')
-    and privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE');
-  if bad is not null then raise exception 'DB-I05: mutable revision anchor: %',bad; end if;
+    and (
+      (table_name in ('canonical_answer_revisions','evidence_revisions')
+       and privilege_type in ('UPDATE','DELETE','TRUNCATE'))
+      or
+      (table_name='question_answer_revisions'
+       and privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE'))
+    );
+  if bad is not null then raise exception 'DB-I05: revision authority drift: %',bad; end if;
 end
 $inv$;
 
