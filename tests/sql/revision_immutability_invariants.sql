@@ -11,7 +11,12 @@ insert into public.canonical_answer_revisions(
  '00000000-0000-0000-0000-000000009210',
  1,'original',now(),now()
 );
-do $$
+insert into public.evidence_records(tenant_id,id,title,evidence_type) values
+('00000000-0000-0000-0000-000000009200','00000000-0000-0000-0000-000000009220','Evidence','DOC');
+insert into public.evidence_revisions(tenant_id,id,evidence_id,revision_no,effective_at,known_at) values
+('00000000-0000-0000-0000-000000009200','00000000-0000-0000-0000-000000009221','00000000-0000-0000-0000-000000009220',1,now(),now());
+
+do $
 begin
  begin
   update public.canonical_answer_revisions
@@ -22,5 +27,27 @@ begin
   if sqlerrm='IMMUTABILITY_TEST_FAILED' then raise; end if;
   if sqlerrm<>'HISTORICAL_REVISION_IMMUTABLE' then raise; end if;
  end;
-end $$;
+ begin
+  delete from public.canonical_answer_revisions where id='00000000-0000-0000-0000-000000009211';
+  raise exception 'IMMUTABILITY_TEST_FAILED';
+ exception when others then
+  if sqlerrm='IMMUTABILITY_TEST_FAILED' then raise; end if;
+  if sqlerrm<>'HISTORICAL_REVISION_IMMUTABLE' then raise; end if;
+ end;
+ begin
+  update public.evidence_revisions set freshness_state='FRESH'
+  where id='00000000-0000-0000-0000-000000009221';
+  raise exception 'IMMUTABILITY_TEST_FAILED';
+ exception when others then
+  if sqlerrm='IMMUTABILITY_TEST_FAILED' then raise; end if;
+  if sqlerrm<>'HISTORICAL_REVISION_IMMUTABLE' then raise; end if;
+ end;
+ begin
+  delete from public.evidence_revisions where id='00000000-0000-0000-0000-000000009221';
+  raise exception 'IMMUTABILITY_TEST_FAILED';
+ exception when others then
+  if sqlerrm='IMMUTABILITY_TEST_FAILED' then raise; end if;
+  if sqlerrm<>'HISTORICAL_REVISION_IMMUTABLE' then raise; end if;
+ end;
+end $;
 rollback;
