@@ -16,7 +16,7 @@ insert into public.evidence_records(tenant_id,id,title,evidence_type) values
 insert into public.evidence_revisions(tenant_id,id,evidence_id,revision_no,effective_at,known_at) values
 ('00000000-0000-0000-0000-000000009200','00000000-0000-0000-0000-000000009221','00000000-0000-0000-0000-000000009220',1,now(),now());
 
-do $
+do $immut$
 begin
  begin
   update public.canonical_answer_revisions
