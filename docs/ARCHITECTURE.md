@@ -1,265 +1,202 @@
-# TrustAnswer OS — Public Architecture Contract v0.2
+# TrustAnswer OS — Public SaaS Architecture Contract v0.3
 
-Status: **FROZEN FOR IMPLEMENTATION**
+Status: **MIGRATION CANDIDATE — P0 SECURITY GATE DEFINED**
 
-This document describes the public-safe architecture contract. Proprietary adversarial cases and detailed resolver implementation are intentionally omitted.
+TrustAnswer is a multi-tenant SaaS. The v0.2 evidence-first and fail-closed invariants remain inherited. This public contract intentionally omits proprietary resolver logic and adversarial recipes.
 
-## 1. Workbook contract
+## 1. System boundary
 
-One workbook represents one company's reusable security-response knowledge base. Multiple customer questionnaires may use that knowledge base, but customer-specific approvals and submissions remain isolated.
+Public flow:
 
-Required flow:
+`authenticated user -> tenant context -> questionnaire -> canonical answer/evidence -> validation -> human review -> submission gate -> immutable snapshot/export`
 
-`raw question -> canonical topic -> proposed answer -> claim/evidence validation -> human review -> submission gate`
+The browser is not authoritative for tenant membership, plan, entitlement, validation result, approval, or submission readiness.
 
-No generated or reusable answer may bypass evidence and review requirements.
+## 2. Logical modules
 
-## 2. Seven-sheet schema
+The former seven workbook sheets become logical application modules:
 
-### 01_DASHBOARD
+1. Dashboard
+2. Questionnaires
+3. Answer Library
+4. Evidence Registry
+5. Gap Register
+6. Review Queue
+7. Submission Gate
 
-Read-only operational view derived from authoritative sheets. It may display active questionnaire, customer, due date, question counts, answer states, evidence gaps, review status, blockers, readiness percentage, and final submission state.
+The database and server-side validation engine are authoritative.
 
-Dashboard values are not authoritative facts.
+## 3. Multi-tenant identity model
 
-### 02_QUESTIONNAIRE
+Core entities:
 
-One row per customer question.
+- users — authentication identity is supplied by the auth provider.
+- tenants — organization/workspace security boundary.
+- tenant_memberships — user-to-tenant relationship with explicit role and lifecycle state.
+- customers — tenant-owned customer/prospect records.
+- questionnaires — tenant-owned questionnaire context.
+- questionnaire_questions — immutable imported question identity plus mutable response workflow.
+- canonical_answers and canonical_answer_revisions — tenant-owned reusable claims.
+- evidence_records and evidence_revisions — tenant-owned evidence metadata/revisions.
+- answer_evidence_bindings — revision-specific claim/evidence relationships.
+- gaps — tenant-owned blockers/review issues.
+- reviews — context/revision-bound human decisions.
+- submissions and submission_items — immutable historical snapshots.
+- subscriptions — server-maintained billing state.
+- entitlements — server-derived capabilities/limits.
+- usage_counters — server-maintained metering.
+- webhook_events — idempotency/audit records for verified billing events.
 
-Public contract fields include:
+Every tenant-owned row must carry an immutable `tenant_id`. Child records must not infer tenant ownership only through application joins.
 
-- question_id
-- questionnaire_id
-- customer_id
-- customer_name
-- product_scope
-- raw_question
-- normalized_topic
-- canonical_answer_id
-- response_type
-- draft_answer
-- final_answer
-- answer_state
-- evidence_required
-- evidence_ids
-- owner
-- reviewer
-- review_status
-- scope_status
-- contradiction_status
-- evidence_status
-- ready_state
-- notes
-- created_at
-- last_modified
+## 4. Tenant isolation
 
-Raw imported questions must be preserved.
+Tenant access requires all of:
 
-### 03_ANSWER_LIBRARY
+- authenticated user identity
+- active membership in the exact tenant
+- operation permitted by role
+- row tenant_id equals authorized tenant
 
-One row per reusable canonical answer/claim.
+RLS is mandatory for every exposed tenant-owned table and is operation-specific for SELECT/INSERT/UPDATE/DELETE.
 
-Public contract fields include:
+No request may gain access merely by supplying a tenant_id, customer_id, questionnaire_id, answer_id, evidence_id, review_id, or submission_id.
 
-- answer_id
-- topic_id
-- topic
-- claim_key
-- claim_value
-- canonical_question
-- canonical_answer
-- answer_state
-- explicit scope dimensions
-- required_evidence_type
-- default_evidence_ids
-- caveat
-- owner
-- approver
-- approval_status
-- revision identity
-- effective date
-- review dates
-- retirement/supersession metadata
-- authority state
+Service credentials and any role capable of bypassing RLS are server-only and must never be shipped to the browser.
 
-A canonical answer is never equivalent to a customer-approved final answer.
+Cross-tenant copy/import is a new explicit operation that creates new tenant-owned identities and triggers revalidation; it is never ordinary read access to another tenant.
 
-### 04_EVIDENCE_REGISTER
+## 5. Roles
 
-Authoritative evidence ledger.
+Initial roles:
 
-Public contract fields include:
+- OWNER
+- ADMIN
+- MEMBER
+- REVIEWER
 
+Role assignment itself is privileged. The implementation must prevent self-promotion and unauthorized membership mutation.
+
+Billing authority is not inferred from a UI role alone; server-side entitlement rules remain authoritative.
+
+## 6. Evidence-reference model
+
+MVP stores evidence metadata/reference, not confidential evidence file contents.
+
+Evidence revision fields include:
+
+- tenant_id
 - evidence_id
 - evidence_revision_id
-- evidence_title
-- evidence_type
-- control_topic
-- description
-- source_location
+- title/type/control topic
+- source_reference
 - source_owner
-- revision/version metadata
 - effective_at
 - known_at
-- verification/review dates
-- freshness_state
+- last_verified/next_review
+- freshness state
 - shareability
 - explicit scope dimensions
-- status
-- supersession metadata
+- lifecycle/supersession metadata
 
-Evidence must be revision-bound. Titles are not identity.
+A source_reference is not proof that the remote document is accessible, current, safe to share, or unchanged. Evidence validity remains an explicit validation decision.
 
-Shareability states must distinguish public/customer-safe material from NDA-only, internal, or restricted material.
+## 7. Point-in-time and revision contract
 
-### 05_GAP_REGISTER
+v0.2 rules remain:
 
-One row per unresolved issue.
+- current truth cannot rewrite historical truth
+- approvals bind to exact context and revisions
+- evidence identity is revision-specific
+- dependency repair does not restore approval
+- ambiguous or unknown state cannot pass
 
-Public gap families include:
+Submitted snapshots are append-only/immutable through normal product roles.
 
-- missing or stale evidence
-- control or answer gap
-- scope conflict
-- contradiction
-- missing owner/approval
-- incompatible evidence
-- shareability conflict
-- invalid N/A rationale
-- missing partial-answer caveat
-- roadmap misrepresentation
+## 8. Billing and entitlement architecture
 
-Control gaps and evidence gaps must remain distinct.
+Paddle is the intended Merchant of Record/billing provider.
 
-### 06_REVIEW_QUEUE
+The browser may initiate checkout but cannot grant capabilities.
 
-One row per review decision.
+Billing flow:
 
-Review records bind to the exact customer/question context, answer revision, evidence revisions, scope, and relevant validation-contract revision.
+`Paddle signed event -> server verification -> idempotent event record -> subscription state -> derived entitlement -> enforcement`
 
-A material dependency change invalidates prior approval.
+Subscription/provider identifiers are mapped server-side to exactly one TrustAnswer tenant relationship. Client-supplied price, plan, status, quota, customer ID, or subscription ID is never authoritative.
 
-Public decision states:
+Entitlements are derived from trusted billing state and an internal plan catalogue. Unknown product/price mappings fail closed.
 
-- PENDING
-- APPROVED
-- APPROVED_WITH_CAVEAT
-- REJECTED
-- RETURNED
+Billing states must explicitly handle at least trialing, active, past_due, paused, canceled, scheduled changes, duplicate/out-of-order delivery, and reconciliation uncertainty.
 
-### 07_SUBMISSION_GATE
+A canceled/paused/ineligible subscription cannot retain paid capabilities merely because the browser cached an old plan.
 
-The publication boundary.
+Grace behavior for past_due, if offered, must be explicit policy rather than accidental access.
 
-Public outputs:
+## 9. Free / Solo / Pro contract
 
-- READY
-- BLOCKED
-- REVIEW_REQUIRED
+Initial commercial model:
 
-There is no auto-approved or good-enough state.
+- FREE — bounded evaluation capability
+- SOLO — paid individual/small-team capability
+- PRO — paid team/workflow capability
 
-READY requires every mandatory validation dimension to pass. Unknown, error, broken reference, ambiguity, or integrity failure cannot be interpreted as success.
+Exact quotas are configuration, not client authority.
 
-## 3. State model
+All quota consumption and entitlement checks for privileged operations occur server-side. Export, paid workflow features, membership limits, questionnaire limits and future AI allowances must not be unlockable by editing browser state.
 
-Question lifecycle:
+## 10. API boundary
 
-`IMPORTED -> MAPPED -> DRAFTED -> VALIDATING -> BLOCKED | REVIEW_REQUIRED -> APPROVED -> READY_TO_SEND`
+Public/browser API may perform authorized product operations using the authenticated user context.
 
-A dependency mutation after approval moves the item to an invalidated/review-required path. Repairing the dependency alone must not resurrect READY.
+Server-only boundary contains:
 
-## 4. Answer states
+- billing secrets and webhook verification
+- privileged database/service credentials
+- entitlement derivation
+- submission gate authority
+- immutable snapshot creation
+- validation/resolver internals
+- future AI provider secrets
+- administrative reconciliation jobs
 
-Supported public answer states:
+Every mutation performs authorization and entitlement checks on the server/database boundary, not only in UI routing.
 
-- UNKNOWN
-- SUPPORTED
-- PARTIAL
-- UNSUPPORTED
-- NOT_APPLICABLE
-- ROADMAP
-- NEEDS_REVIEW
+Object identifiers are treated as untrusted input.
 
-Rules include:
+## 11. Submission gate
 
-- blank is not NO
-- UNKNOWN cannot silently become SUPPORTED
-- PARTIAL requires an explicit caveat
-- NOT_APPLICABLE requires rationale
-- ROADMAP must not be represented as an implemented control
+READY_TO_SEND remains fail-closed.
 
-## 5. Point-in-time contract
+SaaS migration adds mandatory conditions:
 
-Historical submissions are evaluated using their submission/evaluation context, not today's state.
+- tenant context valid
+- membership active
+- authorization valid
+- entitlement permits requested operation
+- database/security integrity valid
 
-Evidence eligibility requires that it was both effective and known within the relevant evaluation context. Later knowledge must not retroactively make an earlier submission appear supported.
+The original answer/evidence/scope/PIT/contradiction/review invariants remain mandatory.
 
-Submitted snapshots are immutable historical records even when the current knowledge base changes.
+## 12. SaaS security invariants
 
-## 6. Scope contract
+1. A user identity is not a tenant authorization.
+2. Knowing an object ID grants nothing.
+3. Tenant ownership is explicit on every tenant-owned row.
+4. RLS is mandatory defense-in-depth, not optional application logic.
+5. Browser state cannot grant a paid capability.
+6. Billing events are untrusted until cryptographically verified.
+7. Duplicate or reordered billing events cannot resurrect entitlement.
+8. Unknown billing mappings fail closed.
+9. Service credentials never enter the browser.
+10. Historical submissions cannot be mutated by later tenant, billing, or knowledge changes.
+11. Fixing a dependency still requires fresh review where v0.2 requires it.
+12. Absence of a denial is never proof of authorization.
 
-Blank is not a wildcard.
+## 13. Migration rule
 
-Scope dimensions must use explicit values such as a concrete scope, explicit ALL, or UNKNOWN. UNKNOWN does not match ALL.
+Workbook Engine v0.1 is canceled as the product implementation target.
 
-The implementation must revalidate scope when content is reused across customers, products, plans, regions, deployments, or features.
+Architecture v0.2 is retained as the validation-domain parent contract. v0.3 migrates its logical model into a multi-tenant SaaS without weakening any v0.2 safety invariant.
 
-## 7. Canonical authority
-
-A canonical claim must not have conflicting active authoritative values for the same applicable scope and evaluation context.
-
-Ambiguous authority blocks dependent publication rather than silently choosing a winner.
-
-## 8. Evidence contract
-
-Evidence identity is revision-specific.
-
-Evidence validity and evidence shareability are separate decisions.
-
-An answer may be internally supported while its supporting evidence remains unsuitable for customer disclosure.
-
-Superseded, broken, stale, future-known, ambiguous, or otherwise invalid evidence cannot satisfy a required evidence gate.
-
-## 9. Approval contract
-
-Approval is contextual, not portable.
-
-It is bound to the relevant customer/question context, answer revision, evidence revisions, scope and validation contract. Material dependency changes require a new review.
-
-## 10. Formula and integrity contract
-
-Formulas perform deterministic validation; formulas do not create facts.
-
-Workbook integrity is itself a submission prerequisite. Missing required structure, broken references, formula errors, or an unknown integrity state must fail closed.
-
-Exact anti-tamper implementation is private.
-
-## 11. Submission snapshot
-
-A submitted record must preserve sufficient immutable context to reconstruct what was actually sent, including question identity, final answer/revision, relevant canonical revision, evidence revisions, scope, review decision, timestamps, contract/schema versions, and gate result.
-
-## 12. Master invariant
-
-The public master invariant is:
-
-> READY_TO_SEND exists only when required context, answer, authority, scope, evidence, review, integrity, and special-state validations all pass with no blocking ambiguity.
-
-Absence of a detected failure is not proof of success.
-
-## 13. Explicit v0.1 exclusions
-
-The frozen MVP does not require:
-
-- AI answer generation
-- semantic/fuzzy matcher
-- trust center
-- SOC 2 automation
-- document hosting
-- external API
-- team authentication
-- automatic web crawling
-- large prewritten answer corpus
-- risk/compliance scoring
-
-The MVP's primary job is to prevent an unsupported or insufficiently reviewed questionnaire response from being treated as ready to send.
+UI/UX implementation is blocked until the v0.3 tenant-isolation and entitlement adversarial gate closes.
