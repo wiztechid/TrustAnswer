@@ -68,12 +68,18 @@ Runtime/CI-proven:
 
 A hosting-framework route still needs to call the Web-standard adapter at deployment time, but it must not reimplement billing authority or parse the body first.
 
+### 8. Authority concurrency — P0 CLOSED / FROZEN
+Boundary CI #217 and #219 prove real two-session PostgreSQL races:
+- FREE quota at 24/25 permits exactly one concurrent final consumption and finishes at 25;
+- two ACTIVE OWNERs concurrently removing their own authority permit exactly one transition and finish with one ACTIVE OWNER.
+These are runtime serialization proofs, not source-order checks.
+
 ## Current migrations
 Migrations are sequential through:
 `20261003002000_atomic_initial_billing_binding.sql`
 
 ## CI status
-Latest verified run at this checkpoint: **Boundary CI #205 — SUCCESS**.
+Latest verified run at this checkpoint: **Boundary CI #219 — SUCCESS**.
 It includes migrations from zero plus schema security, billing identity, DB-derived entitlement, quota authority, answer revision, submission authority, tenant bootstrap, checkout binding, atomic initial billing, RLS execution, and the TypeScript billing boundary suites through raw-body HTTP adaptation.
 
 ## Frozen areas
@@ -82,14 +88,14 @@ Do not modify without a concrete defect:
 - Trusted tenant + FREE bootstrap
 - Trusted Paddle identity authority foundation
 - Paddle webhook HTTP boundary
+- Membership and quota authority concurrency
 
 ## Next execution priorities
 1. Add the thin hosting-framework route that invokes the frozen Web-standard webhook adapter without pre-parsing the body.
 2. Audit generic historical immutability coverage outside the frozen submission chain.
-3. Add true two-session concurrency tests for membership and quota locks.
-4. Add package lock and move CI from `npm install` to `npm ci`.
-5. Port the remaining v0.2 adversarial validator suite to the SaaS engine before product UI.
-6. Keep AI and confidential evidence-file hosting out of MVP until their gates are met.
+3. Add package lock and move CI from `npm install` to `npm ci`.
+4. Port the remaining v0.2 adversarial validator suite to the SaaS engine before product UI.
+5. Keep AI and confidential evidence-file hosting out of MVP until their gates are met.
 
 ## Public/private boundary
 Public repository may contain public-safe architecture, migrations, contracts, and defensive tests. Private moat/adversarial recipes beyond what is necessary for regression safety must not be published.
