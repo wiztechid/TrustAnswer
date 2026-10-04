@@ -49,5 +49,5 @@ begin
   if sqlerrm='IMMUTABILITY_TEST_FAILED' then raise; end if;
   if sqlerrm<>'HISTORICAL_REVISION_IMMUTABLE' then raise; end if;
  end;
-end $;
+end $immut$;
 rollback;
