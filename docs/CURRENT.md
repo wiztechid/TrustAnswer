@@ -77,7 +77,10 @@ These are runtime serialization proofs, not source-order checks.
 ### 9. Generic historical revision immutability — P0 CLOSED / FROZEN
 Boundary CI #249 proves canonical answer, evidence, and question-answer historical revision rows reject privileged UPDATE and DELETE at the database trigger layer while append of a new question-answer revision remains legal. Browser grants/RLS are therefore not the sole immutability boundary.
 
-### 10. GitHub → Cloudflare Worker deployment boundary — P0 CLOSED / FROZEN
+### 10. Reproducible dependency installation — P0 CLOSED / FROZEN
+Boundary CI #257/#258 proves the committed npm lockfile installs cleanly with `npm ci --ignore-scripts`; #259/#260 confirms the local dependency/environment ignore boundary introduces no regression. The temporary lockfile bootstrap workflow has been removed after producing the committed lockfile.
+
+### 11. GitHub → Cloudflare Worker deployment boundary — P0 CLOSED / FROZEN
 Boundary CI #229 proves the thin Worker route delegates only the Paddle webhook path to the frozen Web-standard raw-body adapter. Boundary CI #231 additionally proves the pinned Wrangler toolchain can compile/bundle the Worker with a real deploy dry-run. Runtime secrets remain environment-only and no billing authority moved into the hosting layer.
 
 ## Current migrations
@@ -85,7 +88,7 @@ Migrations are sequential through:
 `20261003002100_generic_revision_immutability.sql`
 
 ## CI status
-Latest verified run at this checkpoint: **Boundary CI #249 — SUCCESS**.
+Latest verified run at this checkpoint: **Boundary CI #260 — SUCCESS**.
 It includes migrations from zero plus schema security, billing identity, DB-derived entitlement, quota authority, answer revision, submission authority, tenant bootstrap, checkout binding, atomic initial billing, RLS execution, and the TypeScript billing boundary suites through raw-body HTTP adaptation.
 
 ## Frozen areas
@@ -96,12 +99,12 @@ Do not modify without a concrete defect:
 - Paddle webhook HTTP boundary
 - Membership and quota authority concurrency
 - Generic historical revision immutability
+- Reproducible dependency installation
 - GitHub → Cloudflare Worker deployment boundary
 
 ## Next execution priorities
-1. Add package lock and move CI from `npm install` to `npm ci`.
-2. Port the remaining v0.2 adversarial validator suite to the SaaS engine before product UI.
-3. Keep AI and confidential evidence-file hosting out of MVP until their gates are met.
+1. Port the remaining v0.2 adversarial validator suite to the SaaS engine before product UI.
+2. Keep AI and confidential evidence-file hosting out of MVP until their gates are met.
 
 ## Public/private boundary
 Public repository may contain public-safe architecture, migrations, contracts, and defensive tests. Private moat/adversarial recipes beyond what is necessary for regression safety must not be published.
